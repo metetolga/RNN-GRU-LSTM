@@ -1,109 +1,152 @@
-# RNN-GRU-LSTM
+# Custom RNN Architectures Implementation
 
-This repository contains custom implementations of Recurrent Neural Network (RNN) and Gated Recurrent Unit (GRU) models using PyTorch. These implementations provide a clear understanding of the internal mechanisms of these architectures.
+This repository contains PyTorch implementations of three recurrent neural network architectures built from scratch: vanilla RNN, GRU (Gated Recurrent Unit), and LSTM (Long Short-Term Memory).
 
-## Model Architectures
+## Vanilla RNN
 
-### 1. Custom RNN
+### Architecture
+The vanilla RNN is the simplest form of recurrent neural network, processing sequential data by maintaining a hidden state that is updated at each time step.
 
-The CustomRNN is a basic recurrent neural network implementation that processes sequential data. It maintains a hidden state that carries information across time steps.
-
-#### Architecture Details:
 ```python
 class CustomRNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
+        super().__init__()
+        self.hidden_size = hidden_size
         self.in2hidden = nn.Linear(input_size + hidden_size, hidden_size)
         self.in2output = nn.Linear(input_size + hidden_size, output_size)
 ```
 
-#### Forward Pass Formulation:
-The RNN processes inputs using the following equations:
+### Forward Pass Equations
+At each time step t, the RNN performs the following computations:
 
-1. Combined Input: `combined = [x_t; h_{t-1}]`
-   - `x_t`: Current input (size: input_size)
-   - `h_{t-1}`: Previous hidden state (size: hidden_size)
-   
-2. Hidden State Update: `h_t = σ(W_h · combined + b_h)`
-   - `σ`: Sigmoid activation function
-   - `W_h`: Hidden state weights
-   - `b_h`: Hidden state bias
+1. **Combined Input:**
+   ```
+   combined_t = [x_t, h_{t-1}]
+   ```
+   where `[·,·]` denotes concatenation
 
-3. Output Generation: `y_t = W_o · combined + b_o`
-   - `W_o`: Output weights
-   - `b_o`: Output bias
+2. **Hidden State Update:**
+   ```
+   h_t = σ(W_h · combined_t + b_h)
+   ```
+   where σ is the sigmoid activation function
 
-### 2. Custom GRU
+3. **Output Computation:**
+   ```
+   y_t = W_o · combined_t + b_o
+   ```
 
-The CustomGRU implements a Gated Recurrent Unit, which is more sophisticated than standard RNN and includes update and reset gates to better control information flow.
+## Gated Recurrent Unit (GRU)
 
-#### Architecture Details:
+### Architecture
+GRU introduces update and reset gates to better control information flow through the network.
+
 ```python
 class CustomGRU(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
+        super().__init__()
+        self.hidden_size = hidden_size
         self.in2update = nn.Linear(input_size + hidden_size, hidden_size)
         self.in2reset = nn.Linear(input_size + hidden_size, hidden_size)
         self.in2hidden = nn.Linear(input_size + hidden_size, hidden_size)
         self.in2out = nn.Linear(input_size + hidden_size, hidden_size)
 ```
 
-#### Forward Pass Formulation:
-The GRU processes inputs using the following equations:
+### Forward Pass Equations
+The GRU computes the following at each time step t:
 
-1. Combined Input: `combined = [x_t; h_{t-1}]`
-   - `x_t`: Current input
-   - `h_{t-1}`: Previous hidden state
+1. **Gate Computations:**
+   ```
+   combined_t = [x_t, h_{t-1}]
+   r_t = σ(W_r · combined_t + b_r)    # reset gate
+   z_t = σ(W_z · combined_t + b_z)    # update gate
+   ```
 
-2. Update Gate: `z_t = σ(W_z · combined + b_z)`
-   - Controls how much of the new state should be used
-   - `σ`: Sigmoid activation function
+2. **Candidate Hidden State:**
+   ```
+   reset_hidden = [x_t, r_t ⊙ h_{t-1}]
+   h̃_t = tanh(W_h · reset_hidden + b_h)
+   ```
+   where ⊙ denotes element-wise multiplication
 
-3. Reset Gate: `r_t = σ(W_r · combined + b_r)`
-   - Controls how much of the previous state to forget
+3. **Hidden State Update:**
+   ```
+   h_t = (1 - z_t) ⊙ h_{t-1} + z_t ⊙ h̃_t
+   ```
 
-4. Candidate Hidden State: `h̃_t = tanh(W_h · [x_t; (r_t ⊙ h_{t-1})] + b_h)`
-   - `⊙`: Element-wise multiplication
-   - Creates a candidate state using reset gate
+4. **Output Computation:**
+   ```
+   combined_output = [x_t, h_t]
+   y_t = W_o · combined_output + b_o
+   ```
 
-5. Final Hidden State: `h_t = (1 - z_t) ⊙ h_{t-1} + z_t ⊙ h̃_t`
-   - Updates the hidden state using the update gate
+## Long Short-Term Memory (LSTM)
 
-6. Output Generation: `y_t = W_o · [x_t; h_t] + b_o`
-   - Produces the final output using the new hidden state
+### Architecture
+LSTM uses three gates and a memory cell to control information flow and maintain long-term dependencies.
 
-## Initialization
-
-Both models use Kaiming uniform initialization for their hidden states:
 ```python
-def init_hidden(self):
-    return nn.init.kaiming_uniform_(torch.empty(1, self.hidden_size))
+class CustomLSTM(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super().__init__()
+        self.hidden_size = hidden_size
+        self.in2cell = nn.Linear(input_size + hidden_size, hidden_size)
+        self.in2in = nn.Linear(input_size + hidden_size, hidden_size)
+        self.in2frg = nn.Linear(input_size + hidden_size, hidden_size)
+        self.in2out = nn.Linear(input_size + hidden_size, hidden_size)
+        self.out_layer = nn.Linear(hidden_size, output_size)
 ```
 
-## Key Differences
+### Forward Pass Equations
+The LSTM computes the following at each time step t:
 
-1. **Gating Mechanism**: 
-   - RNN uses a simple update rule with a single transformation
-   - GRU uses update and reset gates to control information flow
+1. **Combined Input:**
+   ```
+   combined_t = [x_t, h_{t-1}]
+   ```
 
-2. **Memory Retention**:
-   - RNN may struggle with long-term dependencies
-   - GRU's gating mechanism helps better preserve relevant information
+2. **Gate Computations:**
+   ```
+   f_t = σ(W_f · combined_t + b_f)    # forget gate
+   i_t = σ(W_i · combined_t + b_i)    # input gate
+   o_t = σ(W_o · combined_t + b_o)    # output gate
+   ```
 
-3. **Parameter Count**:
-   - RNN has fewer parameters and is simpler to train
-   - GRU has more parameters but offers better control over information flow
+3. **Cell State Update:**
+   ```
+   c̃_t = tanh(W_c · combined_t + b_c)    # candidate cell state
+   c_t = f_t ⊙ c_{t-1} + i_t ⊙ c̃_t       # new cell state
+   ```
 
-## Usage Example
+4. **Hidden State and Output:**
+   ```
+   h_t = o_t ⊙ tanh(c_t)
+   y_t = W_y · h_t + b_y
+   ```
 
+## Initialization
+All models use Kaiming uniform initialization for their hidden states, which helps prevent vanishing/exploding gradients at the start of training.
+
+## Usage
+To use any of these models:
+
+1. Initialize the model with appropriate dimensions:
 ```python
-# Initialize models
-rnn = CustomRNN(input_size=59, hidden_size=256, output_size=256)
-gru = CustomGRU(input_size=59, hidden_size=256, output_size=256)
+model = CustomRNN(input_size=64, hidden_size=128, output_size=10)
+# or
+model = CustomGRU(input_size=64, hidden_size=128, output_size=10)
+# or
+model = CustomLSTM(input_size=64, hidden_size=128, output_size=10)
+```
 
-# Initialize hidden states
-hidden_rnn = rnn.init_hidden()
-hidden_gru = gru.init_hidden()
+2. Initialize the hidden state:
+```python
+hidden = model.init_hidden()
+```
 
-# Forward pass
-output_rnn, hidden_rnn = rnn(input_tensor, hidden_rnn)
-output_gru, hidden_gru = gru(input_tensor, hidden_gru)
+3. Forward pass:
+```python
+output, hidden = model(x, hidden)  # For RNN/GRU
+# or
+output, hidden, cell = model(x, hidden, cell)  # For LSTM
 ```
